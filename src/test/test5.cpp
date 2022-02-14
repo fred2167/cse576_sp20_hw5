@@ -29,12 +29,23 @@ void test_cornerness()
   TEST(same_image(c, gt));
   }
 
+void test_gaussian()
+{
+  float sigma = 2;
+  Image im = load_image("data/dogbw.png");
+  Image gaussian2D = make_gaussian_filter(sigma);
+  Image conv2D = convolve_image(im, gaussian2D, true);
+
+  Image conv1D = smooth_image(im, sigma);
+  TEST(same_image(conv1D, conv2D));
+}
+
 
 void run_tests()
   {
   test_structure();
-  test_cornerness();
-  
+  // test_cornerness();
+  test_gaussian();
   printf("%d tests, %d passed, %d failed\n", tests_total, tests_total-tests_fail, tests_fail);
   }
 

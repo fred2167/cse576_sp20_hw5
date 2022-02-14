@@ -69,13 +69,12 @@ Image mark_corners(const Image& im, const vector<Descriptor>& d)
 Image make_1d_gaussian(float sigma)
   {
   // TODO: make separable 1d Gaussian.
-  
-  NOT_IMPLEMENTED();
-  
-  Image lin(1,1); // set to proper dimension
-  lin.data[0]=1;
-  
-  
+  int size = sigma * 6;
+  if (size % 2 == 0) size += 1;
+
+  Image lin(size,1); // set to proper dimension
+  for (int i = 0; i < size; i++) lin.data[i] = (1./ (sqrt(2*M_PI)*sigma)) * exp(-(pow(i - size/2, 2) / (2*pow(sigma, 2))));
+  lin.l1_normalize();
   return lin;
   }
 
@@ -90,9 +89,12 @@ Image smooth_image(const Image& im, float sigma)
   // Hint: to make the filter from vertical to horizontal or vice versa
   // use "swap(filter.h,filter.w)"
   
-  NOT_IMPLEMENTED();
-  
-  return im;
+  Image gaussian_kernel_1D = make_1d_gaussian(sigma);
+  Image conv = convolve_image(im, gaussian_kernel_1D, true);
+
+  swap(gaussian_kernel_1D.h, gaussian_kernel_1D.w);
+  Image conv2 = convolve_image(conv, gaussian_kernel_1D, true);
+  return conv2;
   }
 
 
@@ -115,8 +117,14 @@ Image structure_matrix(const Image& im2, float sigma)
   Image S(im.w, im.h, 3);
   // TODO: calculate structure matrix for im.
   
-  NOT_IMPLEMENTED();
-  
+  Image gx = convolve_image(im, make_gx_filter(), true);
+  Image gy = convolve_image(im, make_gy_filter(), true);
+
+  int im_size = S.h * S.w;
+  for (int i = 0; i< S.h*S.w; i++) S.data[i] = pow(gx.data[i], 2);
+  for (int i = 0; i< S.h*S.w; i++) S.data[i + im_size] = pow(gy.data[i], 2);
+  for (int i = 0; i< S.h*S.w; i++) S.data[i + im_size * 2] = gx.data[i] * gy.data[i];
+  S = smooth_image(S, sigma);
   return S;
   }
 

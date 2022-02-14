@@ -9,6 +9,7 @@
 
 #include <set>
 #include <thread>
+#include <iostream>
 
 using namespace std;
 
@@ -125,10 +126,9 @@ float l1_distance(const vector<float>& a,const vector<float>& b)
   assert(a.size()==b.size() && "Arrays must have same size\n");
   
   // TODO: return the correct number.
-  
-  NOT_IMPLEMENTED();
-  
-  return 0;
+  float diff = 0; 
+  for (int i =0; i < a.size(); i++) diff += abs(a[i] - b[i]);
+  return diff;
   }
 
 // HW5 2.2a
@@ -145,8 +145,15 @@ vector<int> match_descriptors_a2b(const vector<Descriptor>& a, const vector<Desc
     
     // TODO: find the best 'bind' descriptor in b that best matches a[j]
     // TODO: put your code here:
-    
-    NOT_IMPLEMENTED();
+    for (int i=0; i < b.size(); i++) {
+      float dist = l1_distance(a[j].data, b[i].data);
+
+      if (dist < best_distance){
+        best_distance = dist;
+        bind = i;
+      }
+    }
+    ind.push_back(bind);
     }
   return ind;
   
@@ -167,8 +174,14 @@ vector<Match> match_descriptors(const vector<Descriptor>& a, const vector<Descri
   // TODO: use match_descriptors_a2b(a,b) and match_descriptors_a2b(b,a)
   // and populate `m` with good matches!
   
-  NOT_IMPLEMENTED();
-  
+  vector<int> a2b = match_descriptors_a2b(a, b);
+  vector<int> b2a = match_descriptors_a2b(b, a);
+
+  for (int i=0; i < a2b.size(); i++){
+    if (b2a[a2b[i]] == i) 
+      m.push_back(Match(&a[i], &b[a2b[i]], l1_distance(a[i].data, b[a2b[i]].data)));
+  }
+
   return m;
   }
 
@@ -184,10 +197,14 @@ Point project_point(const Matrix& H, const Point& p)
   // Remember that homogeneous coordinates are equivalent up to scalar.
   // Have to divide by.... something...
   
-  NOT_IMPLEMENTED();
+  Matrix m = Matrix(3, 1);
+  m(0,0) = p.x;
+  m(1,0) = p.y;
+  m(2,0) = 1;
+
+  Matrix projection = H*m;
   
-  
-  return Point(0,0);
+  return Point(projection(0,0) / projection(2,0), projection(1,0) / projection(2, 0));
   }
 
 // HW5 3.2a
@@ -197,8 +214,7 @@ Point project_point(const Matrix& H, const Point& p)
 double point_distance(const Point& p, const Point& q)
   {
   // TODO: should be a quick one.
-  NOT_IMPLEMENTED();
-  return 0;
+  return sqrt(pow(p.x - q.x, 2) + pow(p.y - q.y, 2));
   }
 
 // HW5 3.2b
@@ -214,8 +230,10 @@ vector<Match> model_inliers(const Matrix& H, const vector<Match>& m, float thres
   // TODO: fill inliers
   // i.e. distance(H*a.p, b.p) < thresh
   
-  NOT_IMPLEMENTED();
-  
+  for (auto& match: m) {
+    if (point_distance(project_point(H, match.a->p), match.b->p) < thresh)
+      inliers.push_back(match);
+  }
   return inliers;
   }
 
@@ -228,7 +246,10 @@ void randomize_matches(vector<Match>& m)
   // You might want to use the swap function like:
   // swap(m[0],m[1]) which swaps the first and second element
   
-  NOT_IMPLEMENTED();
+  for (int i =0; i < m.size() - 2; i++){
+    int j = rand() % m.size();
+    swap(m[i], m[j]);
+  }
   }
 
 // HW5 3.4
@@ -253,8 +274,28 @@ Matrix compute_homography_ba(const vector<Match>& matches)
     double ny = matches[i].b->p.y;
     // TODO: fill in the matrices M and b.
     
-    NOT_IMPLEMENTED();
-    
+    M(i*2, 0) = mx;
+    M(i*2, 1) = my;
+    M(i*2, 2) = 1;
+    M(i*2, 3) = 0;
+    M(i*2, 4) = 0;
+    M(i*2, 5) = 0;
+    M(i*2, 6) = -nx*mx;
+    M(i*2, 7) = -nx*my;
+
+    M(i*2+1, 0) = 0;
+    M(i*2+1, 1) = 0;
+    M(i*2+1, 2) = 0;
+    M(i*2+1, 3) = mx;
+    M(i*2+1, 4) = my;
+    M(i*2+1, 5) = 1;
+    M(i*2+1, 6) = -ny*mx;
+    M(i*2+1, 7) = -ny*my;
+
+    b(i*2) = nx - mx;
+    b(i*2 + 1) = ny - my;
+
+
     }
   
   
@@ -264,8 +305,16 @@ Matrix compute_homography_ba(const vector<Match>& matches)
   Matrix Hba(3, 3);
   // TODO: fill in the homography H based on the result in a.
   
-  NOT_IMPLEMENTED();
-  
+  Hba(0, 0)  = 1 + a(0);
+  Hba(0, 1)  =  a(1);
+  Hba(0, 2)  =  a(2);
+  Hba(1, 0)  =  a(3);
+  Hba(1, 1)  = 1 + a(4);
+  Hba(1, 2)  =  a(5);
+  Hba(2, 0)  =  a(6);
+  Hba(2, 1)  =  a(7);
+  Hba(2, 2)  = 1;
+
   return Hba;
   }
 
@@ -283,7 +332,7 @@ Matrix RANSAC(vector<Match> m, float thresh, int k, int cutoff)
     //printf("Need at least 4 points for RANSAC! %zu supplied\n",m.size());
     return Matrix::identity(3,3);
     }
-  
+
   int best = 0;
   Matrix Hba = Matrix::translation_homography(256, 0);
   // TODO: fill in RANSAC algorithm.
@@ -297,8 +346,22 @@ Matrix RANSAC(vector<Match> m, float thresh, int k, int cutoff)
   //             return it immediately
   // if we get to the end return the best homography
   
-  NOT_IMPLEMENTED();
-  
+  int num_samples = 4;
+  for (int i=0; i < k; i++) {
+    randomize_matches(m);
+
+    vector<Match> sub_sample_matches(m.begin(), m.begin() + num_samples);
+    Matrix H = compute_homography_ba(sub_sample_matches);
+
+    vector<Match> in_liers = model_inliers(H, m, thresh);
+
+    if (in_liers.size() > best){
+      best = in_liers.size();
+      Hba = compute_homography_ba(in_liers);
+      cout << in_liers.size() << endl;
+      if (in_liers.size() > cutoff) return Hba;
+    }
+  }
   return Hba;
   }
 

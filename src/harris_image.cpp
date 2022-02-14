@@ -140,8 +140,15 @@ Image cornerness_response(const Image& S, int method)
   // We'll use formulation det(S) - alpha * trace(S)^2, alpha = .06.
   // E(S) = det(S) / trace(S)
   
-  NOT_IMPLEMENTED();
-  
+  int size = S.h * S.w;
+  float alpha = .06;
+  for (int i = 0; i < size; i++){
+    float det = S.data[i] * S.data[i + size] - pow(S.data[i + size * 2], 2);
+    float tra = S.data[i] + S.data[i + size];
+    // R.data[i] =  det - alpha * pow(tra, 2);
+    R.data[i] = det / tra;
+
+  }
   return R;
   }
 
@@ -161,8 +168,24 @@ Image nms_image(const Image& im, int w)
   //         if neighbor response greater than pixel response:
   //             set response to be very low
   
-  NOT_IMPLEMENTED();
-  
+  for (int x = 0; x < im.w; x++) {
+    for (int y = 0; y < im.h; y++) {
+
+      float val = im.clamped_pixel(x, y);
+      bool breakFlag = false;
+      for (int wx = x - w; wx < x + w + 1; wx++){
+        for (int wy = y - w; wy < y + w + 1; wy++){
+
+          if (val < im.clamped_pixel(wx, wy)){
+            r(x, y) = -1.1;
+            breakFlag = true;
+            break;
+          }
+        }
+        if (breakFlag) break;
+      }
+    }
+  }
   return r;
   }
 
@@ -179,8 +202,12 @@ vector<Descriptor> detect_corners(const Image& im, const Image& nms, float thres
   //TODO: count number of responses over threshold (corners)
   //TODO: and fill in vector<Descriptor> with descriptors of corners, use describe_index.
   
-  NOT_IMPLEMENTED();
-  
+  for (int x = 0; x < im.w; x++) {
+    for (int y = 0; y < im.h; y++) {
+      
+      if (nms(x,y) > thresh) d.push_back(describe_index(im, x, y, window));
+    }
+  }
   return d;
   }
 

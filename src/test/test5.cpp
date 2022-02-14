@@ -44,7 +44,7 @@ void test_gaussian()
 void run_tests()
   {
   test_structure();
-  // test_cornerness();
+  test_cornerness();
   test_gaussian();
   printf("%d tests, %d passed, %d failed\n", tests_total, tests_total-tests_fail, tests_fail);
   }

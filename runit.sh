@@ -1,4 +1,4 @@
-./clean.sh
+# ./clean.sh
 ./compile.sh
 # ./test0
 # ./test1

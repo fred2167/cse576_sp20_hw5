@@ -267,33 +267,33 @@ Matrix compute_homography_ba(const vector<Match>& matches)
   
   for(int i = 0; i < (int)matches.size(); ++i)
     {
-    double mx = matches[i].a->p.x;
-    double my = matches[i].a->p.y;
+    double ax = matches[i].a->p.x;
+    double ay = matches[i].a->p.y;
     
-    double nx = matches[i].b->p.x;
-    double ny = matches[i].b->p.y;
+    double bx = matches[i].b->p.x;
+    double by = matches[i].b->p.y;
     // TODO: fill in the matrices M and b.
     
-    M(i*2, 0) = mx;
-    M(i*2, 1) = my;
+    M(i*2, 0) = ax;
+    M(i*2, 1) = ay;
     M(i*2, 2) = 1;
     M(i*2, 3) = 0;
     M(i*2, 4) = 0;
     M(i*2, 5) = 0;
-    M(i*2, 6) = -nx*mx;
-    M(i*2, 7) = -nx*my;
+    M(i*2, 6) = -bx*ax;
+    M(i*2, 7) = -bx*ay;
 
     M(i*2+1, 0) = 0;
     M(i*2+1, 1) = 0;
     M(i*2+1, 2) = 0;
-    M(i*2+1, 3) = mx;
-    M(i*2+1, 4) = my;
+    M(i*2+1, 3) = ax;
+    M(i*2+1, 4) = ay;
     M(i*2+1, 5) = 1;
-    M(i*2+1, 6) = -ny*mx;
-    M(i*2+1, 7) = -ny*my;
+    M(i*2+1, 6) = -by*ax;
+    M(i*2+1, 7) = -by*ay;
 
-    b(i*2) = nx - mx;
-    b(i*2 + 1) = ny - my;
+    b(i*2) = bx - ax;
+    b(i*2 + 1) = by - ay;
 
 
     }
@@ -358,7 +358,7 @@ Matrix RANSAC(vector<Match> m, float thresh, int k, int cutoff)
     if (in_liers.size() > best){
       best = in_liers.size();
       Hba = compute_homography_ba(in_liers);
-      cout << in_liers.size() << endl;
+      // cout << "in_liers: " << in_liers.size() << endl;
       if (in_liers.size() > cutoff) return Hba;
     }
   }
@@ -421,7 +421,7 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
   int w = max(a.w, (int)botright.x) - dx;
   int h = max(a.h, (int)botright.y) - dy;
   
-  //printf("%d %d %d %d\n",dx,dy,w,h);
+  // printf("%d %d %d %d\n",dx,dy,w,h);
   
   // Can disable this if you are making very big panoramas.
   // Usually this means there was an error in calculating H.
@@ -439,7 +439,7 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
       for(int i = 0; i < a.w; ++i)
         {
         // TODO: fill in.
-        NOT_IMPLEMENTED();
+        c(i - dx, j - dy, k)  = a(i, j, k);
         }
   
   // TODO: Blend in image b as well.
@@ -455,10 +455,25 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
   // The member 
   
   // TODO: Put your code here.
+  Matrix Hab = Hba;
+  for (int y=0; y<c.h; y++) {
+    for (int x=0; x<c.w; x++){
+
+      Point pb = project_point(Hab, Point(x, y));
+      pb.x += dx;
+      pb.y += dy;
+      if (pb.x >= 0 && pb.x < b.w && pb.y >= 0 && pb.y < b.h){
+
+        for (int cha=0; cha<b.c; cha++){
+          c(x, y, cha) = b.pixel_bilinear(pb.x, pb.y, cha);
+        }
+      }
+
+
+    }
+  }
   
-  NOT_IMPLEMENTED();
-  
-  
+  return c; 
   // We trim the image so there are as few as possible black pixels.
   return trim_image(c);
   }
@@ -488,7 +503,6 @@ Image panorama_image(const Image& a, const Image& b, float sigma, int corner_met
   
   // Run RANSAC to find the homography
   Matrix Hba = RANSAC(m, inlier_thresh, iters, cutoff);
-  
   // Stitch the images together with the homography
   return combine_images(a, b, Hba, acoeff);
   }

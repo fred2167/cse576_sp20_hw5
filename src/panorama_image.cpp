@@ -247,7 +247,7 @@ void randomize_matches(vector<Match>& m)
   // swap(m[0],m[1]) which swaps the first and second element
   
   for (int i =0; i < m.size() - 2; i++){
-    int j = rand() % m.size();
+    int j = rand() % (m.size() - i) + i;
     swap(m[i], m[j]);
   }
   }
@@ -439,7 +439,7 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
       for(int i = 0; i < a.w; ++i)
         {
         // TODO: fill in.
-        c(i - dx, j - dy, k)  = a(i, j, k);
+        c(i - dx, j - dy, k)  = a(i, j, k); 
         }
   
   // TODO: Blend in image b as well.
@@ -461,19 +461,15 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
 
       Point pb = project_point(Hab, Point(x, y));
       pb.x += dx;
-      pb.y += dy;
+      pb.y += dy; // VERY IMPORTANT, need to shift dx dy to match image a cordinate system
       if (pb.x >= 0 && pb.x < b.w && pb.y >= 0 && pb.y < b.h){
-
         for (int cha=0; cha<b.c; cha++){
-          c(x, y, cha) = b.pixel_bilinear(pb.x, pb.y, cha);
+            c(x, y, cha) = b.pixel_bilinear(pb.x, pb.y, cha);
         }
       }
-
-
     }
   }
   
-  return c; 
   // We trim the image so there are as few as possible black pixels.
   return trim_image(c);
   }

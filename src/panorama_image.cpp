@@ -120,7 +120,7 @@ Image find_and_draw_matches(const Image& a, const Image& b, float sigma, float t
 // HW5 2.1
 // Calculates L1 distance between two floating point arrays.
 // vector<float>& a,b: arrays to compare.
-// returns: l1 distance between arrays (sum of absolute differences).
+// returns: l1 distfloat between arrays (sum of absolute differences).
 float l1_distance(const vector<float>& a,const vector<float>& b)
   {
   assert(a.size()==b.size() && "Arrays must have same size\n");
@@ -455,20 +455,29 @@ Image combine_images(const Image& a, const Image& b, const Matrix& Hba, float ab
   // The member 
   
   // TODO: Put your code here.
-  Matrix Hab = Hba;
-  for (int y=0; y<c.h; y++) {
-    for (int x=0; x<c.w; x++){
+  for (int x = topleft.x; x <= botright.x; x++)
+    for (int y = topleft.y; y <= botright.y; y++)
+    {
+      Point p(x, y);
+      Point projected_p = project_point(Hba, p);
+      if (b.contains(projected_p.x, projected_p.y) && x-dx >= 0 && x-dx < c.w && y-dy >= 0 && y-dy < c.h)
+      {
+        bool nonempty_C = c.is_nonempty_patch(x-dx, y-dy);
+        bool nonempty_B = b.is_nonempty_patch(projected_p.x+1, projected_p.y);
 
-      Point pb = project_point(Hab, Point(x, y));
-      pb.x += dx;
-      pb.y += dy; // VERY IMPORTANT, need to shift dx dy to match image a cordinate system
-      if (pb.x >= 0 && pb.x < b.w && pb.y >= 0 && pb.y < b.h){
-        for (int cha=0; cha<b.c; cha++){
-            c(x, y, cha) = b.pixel_bilinear(pb.x, pb.y, cha);
+        for (int layer = 0; layer < c.c; layer++)
+        {
+          float bilinear = b.pixel_bilinear(projected_p.x, projected_p.y, layer);
+          if (nonempty_B)
+          {
+            if (nonempty_C)
+              c(x-dx, y-dy, layer) = (ablendcoeff * c(x-dx, y-dy, layer)) + ((1-ablendcoeff) * bilinear);
+            else
+              c(x-dx, y-dy, layer) = bilinear;  
+          }
         }
       }
     }
-  }
   
   // We trim the image so there are as few as possible black pixels.
   return trim_image(c);
@@ -516,9 +525,30 @@ Image cylindrical_project(const Image& im, float f)
   
   // For your convenience we have computed the output size
   Image c(im.w/cos(hfov),im.h/cos(hfov),im.c);
-  
-  NOT_IMPLEMENTED();
-  
+  // Image c(im.w, im.h, im.c);
+  float centerX = im.w / 2.;
+  float centerY = im.h / 2.;
+  for (int x=0; x<c.w; x++) {
+    for (int y=0; y<c.h; y++){
+
+
+      float theta = (x - centerX) / f;
+      float h = (y - centerY) / f;
+
+      float x_hat = sin(theta);
+      float y_hat = h;
+      float z_hat = cos(theta);
+
+      float newX = (f * x_hat / z_hat) + centerX;
+      float newY = (f * y_hat / z_hat) + centerY;
+
+      if (im.contains(newX, newY))
+        for (int cha=0; cha<c.c; cha++)
+          c(x, y, cha) = im.pixel_bilinear(newX, newY, cha);
+        
+    }
+  }
+  save_image(c, "output/cyl");
   return c;
   }
 
@@ -536,7 +566,27 @@ Image spherical_project(const Image& im, float f)
   // For your convenience we have computed the output size
   Image c(im.w/cos(hfov),im.h/cos(hfov),im.c);
   
-  NOT_IMPLEMENTED();
-  
+  float centerX = im.w / 2.;
+  float centerY = im.h / 2.;
+  for (int x=0; x<c.w; x++) {
+    for (int y=0; y<c.h; y++){
+
+
+      float theta = (x - centerX) / f;
+      float h = (y - centerY) / f;
+
+      float x_hat = sin(theta) * cos(h);
+      float y_hat = sin(h);
+      float z_hat = cos(theta) * cos(h);
+
+      float newX = (f * x_hat / z_hat) + centerX;
+      float newY = (f * y_hat / z_hat) + centerY;
+
+      if (im.contains(newX, newY))
+        for (int cha=0; cha<c.c; cha++)
+          c(x, y, cha) = im.pixel_bilinear(newX, newY, cha);
+        
+    }
+  }
   return c;
   }

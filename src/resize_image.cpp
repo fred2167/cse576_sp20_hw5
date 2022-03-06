@@ -39,11 +39,13 @@ float Image::pixel_bilinear(float x, float y, int c) const
   float bottom_left = clamped_pixel(low_x, high_y, c);
   float bottom_right = clamped_pixel(high_x, high_y, c);
 
-  float top_val = top_left * (high_x - x) + top_right * (x - low_x);
-  float bottom_val = bottom_left * (high_x - x) + bottom_right * (x - low_x);
-  float result = top_val * (high_y - y) + bottom_val * (y - low_y);
-  
-  return result;
+  float a = x - low_x;
+  float b = y - low_y;
+  float w_tl = (1 - a) * (1 - b) * top_left;
+  float w_bl = a * (1 - b) * bottom_left;
+  float w_br = a * b * bottom_right;
+  float w_tr = (1 - a) * b *top_left;
+  return w_tl + w_bl + w_br + w_tr;
   }
 
 // HW1 #1
